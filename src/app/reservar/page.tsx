@@ -510,7 +510,7 @@ function ReservarWizard() {
 
       {/* footer */}
       <div className="mt-8 text-center text-xs text-stone-400">
-        <button onClick={() => router.push("/")} className="underline">← Volver al inicio</button>
+        <button onClick={() => router.push("/")} className="inline-block py-2 underline">← Volver al inicio</button>
       </div>
     </main>
   );

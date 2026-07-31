@@ -69,14 +69,14 @@ export default async function AdminLayout({ children }: { children: ReactNode })
         {/* Mobile top bar */}
         <header className="sticky top-0 z-30 border-b border-stone-200 bg-white/90 backdrop-blur dark:border-stone-800 dark:bg-stone-950/90 md:hidden">
           <div className="flex items-center justify-between px-4 py-3">
-            <Link href="/admin" className="flex items-center gap-2">
+            <Link href="/admin" className="flex min-h-11 items-center gap-2">
               <span className="text-xl">✂️</span>
               <span className="text-sm font-black uppercase">{settings?.businessName ?? "Panel"}</span>
             </Link>
-            <Link href="/admin/notifications" className="relative text-lg">
+            <Link href="/admin/notifications" className="relative flex h-11 w-11 items-center justify-center text-lg">
               🔔
               {unread.length > 0 && (
-                <span className="absolute -right-1 -top-1 flex h-4 w-4 items-center justify-center rounded-full bg-red-500 text-[9px] font-bold text-white">
+                <span className="absolute right-1 top-1 flex h-4 w-4 items-center justify-center rounded-full bg-red-500 text-[9px] font-bold text-white">
                   {unread.length}
                 </span>
               )}
@@ -84,7 +84,11 @@ export default async function AdminLayout({ children }: { children: ReactNode })
           </div>
           <nav className="scrollbar-hide flex gap-1 overflow-x-auto px-3 pb-2">
             {NAV.map((item) => (
-              <Link key={item.href} href={item.href} className="chip shrink-0 border border-stone-200 bg-stone-100 px-3 py-1.5 text-stone-600 dark:border-stone-700 dark:bg-stone-900 dark:text-stone-300">
+              <Link
+                key={item.href}
+                href={item.href}
+                className="chip flex min-h-11 shrink-0 items-center border border-stone-200 bg-stone-100 px-3 py-1.5 text-stone-600 dark:border-stone-700 dark:bg-stone-900 dark:text-stone-300"
+              >
                 {item.icon} {item.label}
               </Link>
             ))}

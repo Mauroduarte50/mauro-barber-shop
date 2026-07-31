@@ -57,7 +57,7 @@ export default function LoginPage() {
             {busy ? "Ingresando…" : "Entrar"}
           </button>
         </form>
-        <Link href="/" className="mt-4 block text-center text-xs text-stone-400 underline">← Volver al sitio público</Link>
+        <Link href="/" className="mt-4 block py-2 text-center text-xs text-stone-400 underline">← Volver al sitio público</Link>
       </div>
     </main>
   );

@@ -238,7 +238,7 @@ function ManageAppointment() {
 
   return (
     <main className="mx-auto min-h-screen max-w-lg px-5 py-10">
-      <Link href="/" className="text-sm text-stone-400 underline">← Inicio</Link>
+      <Link href="/" className="inline-block py-2 text-sm text-stone-400 underline">← Inicio</Link>
       <div className="animate-fade-up card mt-4 overflow-hidden">
         <div className="border-b border-stone-200 bg-stone-900 p-6 dark:border-stone-800">
           <p className="text-xs font-bold uppercase tracking-[0.25em] text-brand-400">Tu cita</p>
