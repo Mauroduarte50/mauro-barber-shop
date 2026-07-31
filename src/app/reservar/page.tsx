@@ -274,6 +274,9 @@ function ReservarWizard() {
               <Link href={`/cita/${result.code}`} className="btn-ghost w-full">
                 Gestionar mi cita
               </Link>
+              <Link href="/" className="inline-block w-full py-2 text-center text-sm text-stone-400 underline">
+                ← Volver al inicio
+              </Link>
             </div>
           </div>
         </div>
