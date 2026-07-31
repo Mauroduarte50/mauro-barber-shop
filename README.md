@@ -213,18 +213,16 @@ Se respaldan todas las tablas (users, barbers, services, clients, appointments, 
 
 ## 👤 Crear el primer administrador (sin seed)
 
+Para una base de datos de producción nueva, sin datos ficticios: crea
+exactamente un usuario admin y un barbero (sin servicios, horarios ni
+clientes de ejemplo — eso se configura después desde `/admin`):
+
 ```bash
-npx tsx -e "
-import 'dotenv/config';
-import { db } from './src/db';
-import { users } from './src/db/schema';
-import { hashPassword } from './src/lib/auth';
-(async () => {
-  await db.insert(users).values({ name: 'Admin', email: 'admin@barberia.com', passwordHash: await hashPassword('tu-clave-segura') });
-  console.log('Usuario creado');
-})();
-"
+npx tsx scripts/bootstrap-first-admin.ts "Tu Nombre" "tu@correo.com" "tu-clave-segura" "Nombre del Barbero"
 ```
+
+Es seguro volver a correrlo: si el correo o el slug del barbero ya existen,
+no duplica nada.
 
 ## 🏗️ Arquitectura
 
