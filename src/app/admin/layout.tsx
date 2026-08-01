@@ -8,6 +8,7 @@ import { notifications } from "@/db/schema";
 import { getCurrentUser } from "@/lib/auth";
 import { getDefaultBarber, getAppSettings } from "@/lib/settings";
 import { logoutAction } from "@/lib/actions";
+import { BrandFooter } from "@/components/brand-footer";
 
 // Own manifest + icons so a home-screen icon installed from /admin (the
 // barber's panel) opens straight into /admin — distinct from the client
@@ -84,6 +85,7 @@ export default async function AdminLayout({ children }: { children: ReactNode })
         <form action={logoutAction} className="mt-4">
           <button className="navlink w-full text-left text-red-500 dark:text-red-400">🚪 Cerrar sesión</button>
         </form>
+        <BrandFooter className="mt-3" />
       </aside>
 
       {/* Main */}
@@ -116,7 +118,10 @@ export default async function AdminLayout({ children }: { children: ReactNode })
             ))}
           </nav>
         </header>
-        <main className="p-4 sm:p-6">{children}</main>
+        <main className="p-4 sm:p-6">
+          {children}
+          <BrandFooter className="mt-8 pb-2 md:hidden" />
+        </main>
       </div>
     </div>
   );

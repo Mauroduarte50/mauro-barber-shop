@@ -2,6 +2,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { getBarberBySlug, getDefaultBarber, getAppSettings, getActiveServices } from "@/lib/settings";
 import { minutesToLabel, money, waLink } from "@/lib/utils";
+import { BrandFooter } from "@/components/brand-footer";
 
 export const dynamic = "force-dynamic";
 
@@ -201,7 +202,8 @@ export default async function HomePage() {
       </section>
 
       <footer className="bg-stone-950 py-8 text-center text-sm text-stone-500">
-        © {new Date().getFullYear()} {settings.businessName} · Hecho con ✂️ en Colombia
+        <p>© {new Date().getFullYear()} {settings.businessName} · Hecho con ✂️ en Colombia</p>
+        <BrandFooter className="mt-2" />
       </footer>
     </main>
   );

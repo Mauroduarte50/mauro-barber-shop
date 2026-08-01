@@ -4,6 +4,7 @@ import { Suspense, useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { buildICS, money, waLink } from "@/lib/utils";
+import { BrandFooter } from "@/components/brand-footer";
 
 interface Config {
   barber: { id: string; name: string; slug: string; photo: string | null };
@@ -280,6 +281,7 @@ function ReservarWizard() {
             </div>
           </div>
         </div>
+        <BrandFooter className="mt-6" />
       </main>
     );
   }
@@ -515,6 +517,7 @@ function ReservarWizard() {
       <div className="mt-8 text-center text-xs text-stone-400">
         <button onClick={() => router.push("/")} className="inline-block py-2 underline">← Volver al inicio</button>
       </div>
+      <BrandFooter className="mt-2" />
     </main>
   );
 }
