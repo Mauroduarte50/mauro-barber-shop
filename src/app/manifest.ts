@@ -6,6 +6,8 @@ export default function manifest(): MetadataRoute.Manifest {
     short_name: "Mauro Barber",
     description: "Reserva tu cita en la barbería desde tu celular.",
     start_url: "/",
+    scope: "/",
+    id: "/",
     display: "standalone",
     background_color: "#0c0a09",
     theme_color: "#0c0a09",

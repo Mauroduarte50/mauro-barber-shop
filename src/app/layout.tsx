@@ -32,6 +32,11 @@ export const metadata: Metadata = {
     icon: "/images/icon-192.png",
     apple: "/images/icon-192.png",
   },
+  appleWebApp: {
+    capable: true,
+    title: "Mauro Barber",
+    statusBarStyle: "black-translucent",
+  },
 };
 
 export const viewport: Viewport = {

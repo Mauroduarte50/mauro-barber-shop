@@ -1,4 +1,5 @@
 import type { ReactNode } from "react";
+import type { Metadata } from "next";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { and, eq } from "drizzle-orm";
@@ -7,6 +8,27 @@ import { notifications } from "@/db/schema";
 import { getCurrentUser } from "@/lib/auth";
 import { getDefaultBarber, getAppSettings } from "@/lib/settings";
 import { logoutAction } from "@/lib/actions";
+
+// Own manifest + icons so a home-screen icon installed from /admin (the
+// barber's panel) opens straight into /admin — distinct from the client
+// icon installed from / or /reservar, which uses the root manifest.ts.
+// This `manifest` field overrides the root layout's file-convention-derived
+// one for every route under this segment (singular metadata fields are
+// resolved by nearest-segment-wins, same rule as `title`/`description`).
+export const metadata: Metadata = {
+  title: "Panel",
+  applicationName: "Mauro Barber Shop — Panel",
+  manifest: "/admin-manifest.webmanifest",
+  icons: {
+    icon: "/images/icon-admin-192.png",
+    apple: "/images/icon-admin-192.png",
+  },
+  appleWebApp: {
+    capable: true,
+    title: "Mauro Panel",
+    statusBarStyle: "black-translucent",
+  },
+};
 
 const NAV = [
   { href: "/admin", label: "Dashboard", icon: "📊" },

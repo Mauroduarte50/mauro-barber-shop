@@ -75,11 +75,38 @@ function iconSvg(size) {
 </svg>`;
 }
 
+// Admin/barber-panel icon: same scissors glyph, but a distinct slate/blue
+// palette (instead of the client app's black/amber) plus a small "ADMIN"
+// corner badge — so the two installed home-screen icons are unmistakable
+// at a glance, even side by side.
+const SLATE = "#0c1420";
+const SKY = "#38bdf8";
+const SKY_DARK = "#0284c7";
+
+function iconAdminSvg(size) {
+  const s = size * 0.46;
+  const cx = size / 2;
+  const cy = size / 2 - size * 0.02;
+  const badgeH = size * 0.22;
+  return `
+<svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size}" viewBox="0 0 ${size} ${size}">
+  <rect width="${size}" height="${size}" rx="${size * 0.18}" fill="${SLATE}"/>
+  <rect width="${size}" height="${size}" rx="${size * 0.18}" fill="none" stroke="${SKY_DARK}" stroke-width="${size * 0.02}"/>
+  <g transform="translate(${cx - s / 2},${cy - s / 2}) scale(${s / 24})" stroke="${SKY}" stroke-width="1.8" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <path d="${scissorsPath}"/>
+  </g>
+  <rect x="0" y="${size - badgeH}" width="${size}" height="${badgeH}" fill="${SKY_DARK}" opacity="0.92"/>
+  <text x="${cx}" y="${size - badgeH * 0.32}" text-anchor="middle" font-family="Arial, sans-serif" font-weight="900" font-size="${badgeH * 0.52}" fill="#ffffff" letter-spacing="${size * 0.006}">PANEL</text>
+</svg>`;
+}
+
 async function main() {
   await sharp(Buffer.from(heroSvg(1600, 900))).jpeg({ quality: 88 }).toFile("public/images/hero.jpg");
   await sharp(Buffer.from(portraitSvg(800, 1000))).jpeg({ quality: 88 }).toFile("public/images/barber.jpg");
   await sharp(Buffer.from(iconSvg(192))).png().toFile("public/images/icon-192.png");
   await sharp(Buffer.from(iconSvg(512))).png().toFile("public/images/icon-512.png");
+  await sharp(Buffer.from(iconAdminSvg(192))).png().toFile("public/images/icon-admin-192.png");
+  await sharp(Buffer.from(iconAdminSvg(512))).png().toFile("public/images/icon-admin-512.png");
   console.log("Placeholder images generated in public/images/");
 }
 
