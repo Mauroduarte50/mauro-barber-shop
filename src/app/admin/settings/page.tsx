@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { changePassword, getSettingsData, saveSettingsData } from "@/lib/actions";
 import { DEFAULT_TZ } from "@/lib/utils";
 import PushNotificationButton from "@/components/push-notification-button";
+import FactoryResetPanel from "@/components/factory-reset-panel";
 
 const FIELDS: { key: string; label: string; placeholder?: string; hint?: string }[] = [
   { key: "business_name", label: "Nombre de la barbería" },
@@ -134,6 +135,8 @@ export default function AdminSettings() {
           </div>
         </div>
       </div>
+
+      <FactoryResetPanel />
     </div>
   );
 }

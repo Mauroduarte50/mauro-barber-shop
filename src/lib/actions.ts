@@ -661,6 +661,94 @@ export async function changePassword(current: string, next: string) {
   return { ok: true as const };
 }
 
+/* ================= FACTORY RESET (danger zone) ================= */
+
+const RESET_CONFIRM_WORD = "ELIMINAR";
+
+/**
+ * Wipes all operational data (appointments, clients, notifications,
+ * services, business hours, breaks, blocked slots, payments, push
+ * subscriptions) and logs the admin out, leaving the system as if freshly
+ * installed. Deliberately preserves `users` (login), `barbers` (identity —
+ * name/slug/id), `settings` (business config), and `audit_logs` (history,
+ * including this very action) — those are never touched.
+ *
+ * Auth is the same `ensureAdmin()` guard used by every other action in
+ * this file (redirects to /login with no valid session) — this is not a
+ * separate check invented for this feature.
+ */
+export async function factoryReset(confirmText: string) {
+  const user = await ensureAdmin();
+
+  if (confirmText !== RESET_CONFIRM_WORD) {
+    return { ok: false as const, error: `Debes escribir "${RESET_CONFIRM_WORD}" exactamente para confirmar.` };
+  }
+
+  // Basic guard against a repeated/duplicated request (double submit, retry
+  // after a slow response) firing the wipe twice: reject if this admin
+  // already started a reset in the last 30 seconds. audit_logs is never
+  // cleared by the reset itself, so this check — and the record it reads —
+  // both survive regardless of outcome.
+  const recent = await db
+    .select({ id: auditLogs.id })
+    .from(auditLogs)
+    .where(
+      and(
+        eq(auditLogs.userId, user.id),
+        eq(auditLogs.action, "factory_reset_initiated"),
+        gte(auditLogs.createdAt, new Date(Date.now() - 30_000)),
+      ),
+    )
+    .limit(1);
+  if (recent.length) {
+    return { ok: false as const, error: "Ya se inició un reseteo hace unos segundos. Espera un momento antes de intentar de nuevo." };
+  }
+
+  // Logged BEFORE and outside the destructive transaction below, so this
+  // specific record — who requested a full reset and when — survives even
+  // if the deletion fails partway and rolls back.
+  await audit(
+    user.id,
+    user.name,
+    "factory_reset_initiated",
+    "Inició un reseteo total: borra citas, clientes, servicios, horarios, descansos, bloqueos, ingresos, notificaciones y suscripciones push. Conserva la cuenta de administrador, el registro del barbero y la configuración del negocio.",
+  );
+
+  try {
+    await db.transaction(async (tx) => {
+      // Children before parents (appointments.clientId is ON DELETE
+      // RESTRICT, so clients can't go first).
+      await tx.delete(payments);
+      await tx.delete(appointments);
+      await tx.delete(clients);
+      await tx.delete(notifications);
+      await tx.delete(services);
+      await tx.delete(businessHours);
+      await tx.delete(breaks);
+      await tx.delete(blockedSlots);
+      await tx.delete(pushSubscriptions);
+      await tx.insert(auditLogs).values({
+        userId: user.id,
+        userName: user.name,
+        action: "factory_reset_completed",
+        details: "Reseteo total completado con éxito.",
+      });
+    });
+  } catch (e) {
+    console.error("factoryReset error", e);
+    await audit(
+      user.id,
+      user.name,
+      "factory_reset_failed",
+      `El reseteo falló y se revirtió por completo (sin cambios): ${e instanceof Error ? e.message : "error desconocido"}`,
+    );
+    return { ok: false as const, error: "El reseteo falló y no se realizó ningún cambio. Intenta de nuevo." };
+  }
+
+  await destroySession();
+  return { ok: true as const };
+}
+
 /* ================= AUDIT ================= */
 
 export async function getAuditLogs(limit = 50) {
