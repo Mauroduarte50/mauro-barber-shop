@@ -1,10 +1,10 @@
 import { NextResponse } from "next/server";
 import { and, eq, gte, lt, ne, sql } from "drizzle-orm";
 import { db } from "@/db";
-import { appointments, barbers, clients, notifications } from "@/db/schema";
+import { appointments, barbers, clients } from "@/db/schema";
 import { getAppSettings } from "@/lib/settings";
 import { getDayAvailability } from "@/lib/availability";
-import { audit } from "@/lib/system";
+import { audit, notify } from "@/lib/system";
 import { localMidnight, minutesToLabel, slotToDate } from "@/lib/utils";
 
 async function loadBooking(code: string) {
@@ -131,15 +131,6 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ code: 
         .update(appointments)
         .set({ startTime: newStart, endTime: newEnd, rescheduledFrom: oldStart, status: "confirmada", updatedAt: new Date() })
         .where(eq(appointments.id, a.id));
-      await tx
-        .insert(notifications)
-        .values({
-          barberId: a.barberId,
-          type: "rescheduled",
-          title: "Cita reprogramada",
-          body: `${a.code} se movió a ${date} ${minutesToLabel(startMin)}.`,
-        })
-        .catch(() => {});
     });
   } catch (e) {
     if (!(e instanceof Error && e.message === "CONFLICT")) {
@@ -149,6 +140,7 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ code: 
     return NextResponse.json({ error: msg }, { status: 409 });
   }
 
+  await notify(a.barberId, "rescheduled", "Cita reprogramada", `${a.code} se movió a ${date} ${minutesToLabel(startMin)}.`);
   await audit(null, "Cliente", "reschedule_booking", `Reprogramó ${a.code} a ${date} ${minutesToLabel(startMin)}`);
   return NextResponse.json({ ok: true });
 }
@@ -174,15 +166,7 @@ export async function DELETE(_req: Request, { params }: { params: Promise<{ code
     .update(appointments)
     .set({ status: "cancelada", cancelledAt: now, cancelledBy: "cliente", updatedAt: now })
     .where(eq(appointments.id, a.id));
-  await db
-    .insert(notifications)
-    .values({
-      barberId: a.barberId,
-      type: "cancelled",
-      title: "Cita cancelada",
-      body: `${a.code} (${row.clientName}) fue cancelada por el cliente.`,
-    })
-    .catch(() => {});
+  await notify(a.barberId, "cancelled", "Cita cancelada", `${a.code} (${row.clientName}) fue cancelada por el cliente.`);
   await audit(null, "Cliente", "cancel_booking", `Canceló ${a.code}`);
   return NextResponse.json({ ok: true });
 }

@@ -6,7 +6,6 @@ import {
   breaks,
   businessHours,
   clients,
-  notifications,
   payments,
   type Appointment,
 } from "@/db/schema";
@@ -20,6 +19,7 @@ import {
   slotToDate,
   todayStrInTz,
 } from "@/lib/utils";
+import { notify } from "@/lib/system";
 
 export interface AvailabilityOptions {
   tz: string;
@@ -183,8 +183,9 @@ export async function createAppointmentTx(
   const dayEndUtc = new Date(dayStartUtc.getTime() + 24 * 3600 * 1000);
   const lockKey = `barber:${input.barberId}:${input.dateStr}`;
 
+  let result: { ok: true; appointment: Appointment } | { ok: false; error: string };
   try {
-    return await db.transaction(async (tx) => {
+    result = await db.transaction(async (tx) => {
       await tx.execute(sql`select pg_advisory_xact_lock(hashtext(${lockKey})::bigint)`);
 
       // Re-check overlap under the lock (authoritative).
@@ -264,18 +265,6 @@ export async function createAppointmentTx(
               createdBy: input.createdBy,
             })
             .returning();
-          await tx
-            .insert(notifications)
-            .values({
-              barberId: input.barberId,
-              type: input.createdBy === "barbero" ? "manual_booking" : "new_booking",
-              title: input.createdBy === "barbero" ? "Cita creada manualmente" : "🔔 Nueva reserva",
-              body:
-                input.createdBy === "barbero"
-                  ? `${input.clientName} — ${input.serviceName} (creada por el barbero).`
-                  : `${input.clientName} reservó ${input.serviceName}. Fecha: ${input.dateStr} · Hora: ${minutesToLabel(start)}.`,
-            })
-            .catch(() => {});
           return { ok: true as const, appointment: appt };
         } catch (e: unknown) {
           const err = e as { code?: string };
@@ -288,6 +277,21 @@ export async function createAppointmentTx(
     console.error("createAppointmentTx error", e);
     return { ok: false, error: "No se pudo completar la reserva. Intenta de nuevo." };
   }
+
+  // Notify (internal + push) after the transaction has committed and the
+  // advisory lock released — this does network I/O and must never hold the
+  // lock or roll back a successful booking if it fails.
+  if (result.ok) {
+    await notify(
+      input.barberId,
+      input.createdBy === "barbero" ? "manual_booking" : "new_booking",
+      input.createdBy === "barbero" ? "Cita creada manualmente" : "🔔 Nueva reserva",
+      input.createdBy === "barbero"
+        ? `${input.clientName} — ${input.serviceName} (creada por el barbero).`
+        : `${input.clientName} reservó ${input.serviceName}. Fecha: ${input.dateStr} · Hora: ${minutesToLabel(input.startMin)}.`,
+    );
+  }
+  return result;
 }
 
 /* ---------------- stats ---------------- */

@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { changePassword, getSettingsData, saveSettingsData } from "@/lib/actions";
 import { DEFAULT_TZ } from "@/lib/utils";
+import PushNotificationButton from "@/components/push-notification-button";
 
 const FIELDS: { key: string; label: string; placeholder?: string; hint?: string }[] = [
   { key: "business_name", label: "Nombre de la barbería" },
@@ -87,6 +88,8 @@ export default function AdminSettings() {
         </div>
 
         <div className="space-y-4">
+          <PushNotificationButton />
+
           <div className="card space-y-3">
             <h2 className="font-black uppercase">⚖️ Reglas de reserva</h2>
             {NUMERIC.map((f) => (

@@ -18,12 +18,17 @@ function loadServiceWorker() {
   const putSpy = vi.fn(async () => undefined);
   const cache = { match: matchSpy, put: putSpy, addAll: vi.fn(async () => undefined) };
 
+  const showNotificationSpy = vi.fn(async () => undefined);
+  const matchAllSpy = vi.fn(async () => [] as { url: string; focus: () => void }[]);
+  const openWindowSpy = vi.fn(async () => undefined);
+
   const fakeSelf = {
     addEventListener: (type: string, handler: Handler) => {
       listeners[type] = handler;
     },
     skipWaiting: vi.fn(),
-    clients: { claim: vi.fn() },
+    clients: { claim: vi.fn(), matchAll: matchAllSpy, openWindow: openWindowSpy },
+    registration: { showNotification: showNotificationSpy },
   };
   const fakeCaches = {
     open: vi.fn(async () => cache),
@@ -39,7 +44,7 @@ function loadServiceWorker() {
   const run = new Function("self", "caches", "fetch", `${SW_SOURCE}\n//# sourceURL=sw.js`);
   run(fakeSelf, fakeCaches, fakeFetch);
 
-  return { listeners, matchSpy, putSpy };
+  return { listeners, matchSpy, putSpy, showNotificationSpy, matchAllSpy, openWindowSpy };
 }
 
 function makeEvent(url: string, opts: { method?: string; mode?: string } = {}) {
@@ -95,5 +100,77 @@ describe("service worker fetch strategy (public/sw.js)", () => {
     const { event, getResponded } = makeEvent("http://192.168.1.7:3000/api/public/bookings", { method: "POST" });
     fetchHandler(event);
     expect(getResponded()).toBeUndefined();
+  });
+});
+
+describe("push notifications (public/sw.js)", () => {
+  let ctx: ReturnType<typeof loadServiceWorker>;
+
+  beforeEach(() => {
+    ctx = loadServiceWorker();
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  it("shows a notification with the title/body/url from the push payload", async () => {
+    const pushHandler = ctx.listeners["push"];
+    const data = { title: "🔔 Nueva reserva", body: "Juan Pérez — Corte + Barba — Hoy 3:00 PM", url: "/admin" };
+    let waited: unknown;
+    pushHandler({
+      data: { json: () => data },
+      waitUntil: (p: unknown) => {
+        waited = p;
+      },
+    });
+    await waited;
+    expect(ctx.showNotificationSpy).toHaveBeenCalledWith(
+      "🔔 Nueva reserva",
+      expect.objectContaining({ body: data.body, data: { url: "/admin" } }),
+    );
+  });
+
+  it("falls back to /admin when the push payload has no url", async () => {
+    const pushHandler = ctx.listeners["push"];
+    let waited: unknown;
+    pushHandler({
+      data: { json: () => ({ title: "Cita cancelada", body: "BAR-1 fue cancelada." }) },
+      waitUntil: (p: unknown) => {
+        waited = p;
+      },
+    });
+    await waited;
+    expect(ctx.showNotificationSpy).toHaveBeenCalledWith("Cita cancelada", expect.objectContaining({ data: { url: "/admin" } }));
+  });
+
+  it("focuses an already-open client on notificationclick instead of opening a new window", async () => {
+    const clickHandler = ctx.listeners["notificationclick"];
+    const focusSpy = vi.fn();
+    ctx.matchAllSpy.mockResolvedValueOnce([{ url: "http://localhost:3000/admin", focus: focusSpy }]);
+    let waited: unknown;
+    clickHandler({
+      notification: { close: vi.fn(), data: { url: "/admin" } },
+      waitUntil: (p: unknown) => {
+        waited = p;
+      },
+    });
+    await waited;
+    expect(focusSpy).toHaveBeenCalled();
+    expect(ctx.openWindowSpy).not.toHaveBeenCalled();
+  });
+
+  it("opens a new window on notificationclick when no matching client is open", async () => {
+    const clickHandler = ctx.listeners["notificationclick"];
+    ctx.matchAllSpy.mockResolvedValueOnce([]);
+    let waited: unknown;
+    clickHandler({
+      notification: { close: vi.fn(), data: { url: "/admin" } },
+      waitUntil: (p: unknown) => {
+        waited = p;
+      },
+    });
+    await waited;
+    expect(ctx.openWindowSpy).toHaveBeenCalledWith("/admin");
   });
 });

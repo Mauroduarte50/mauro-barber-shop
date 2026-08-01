@@ -14,6 +14,7 @@ import {
   clients,
   notifications,
   payments,
+  pushSubscriptions,
   services,
   users,
   type Appointment,
@@ -36,7 +37,7 @@ import {
   isValidEmail,
   isValidPhone,
 } from "@/lib/utils";
-import { audit } from "@/lib/system";
+import { audit, notify } from "@/lib/system";
 
 /* ================= AUTH ================= */
 
@@ -326,10 +327,7 @@ export async function setAppointmentStatus(id: string, status: string) {
     await db.update(appointments).set({ paid: true }).where(eq(appointments.id, id));
   }
   if (status === "cancelada") {
-    await db
-      .insert(notifications)
-      .values({ barberId: barber.id, type: "cancelled", title: "Cita cancelada", body: `${appt.code} fue cancelada por ${user.name}.` })
-      .catch(() => {});
+    await notify(barber.id, "cancelled", "Cita cancelada", `${appt.code} fue cancelada por ${user.name}.`);
   }
   await audit(user.id, user.name, "change_status", `Cambió estado de ${appt.code} a ${status}`);
   revalidatePath("/admin");
@@ -338,6 +336,7 @@ export async function setAppointmentStatus(id: string, status: string) {
 
 export async function cancelAppointment(id: string) {
   const user = await ensureAdmin();
+  const { barber } = await getContext();
   const rows = await db.select().from(appointments).where(eq(appointments.id, id)).limit(1);
   if (!rows.length) return { ok: false as const, error: "No encontrada." };
   const appt = rows[0];
@@ -345,6 +344,7 @@ export async function cancelAppointment(id: string) {
     .update(appointments)
     .set({ status: "cancelada", cancelledAt: new Date(), cancelledBy: user.name, updatedAt: new Date() })
     .where(eq(appointments.id, id));
+  await notify(barber.id, "cancelled", "Cita cancelada", `${appt.code} fue cancelada por ${user.name}.`);
   await audit(user.id, user.name, "cancel_appointment", `Canceló cita ${appt.code}`);
   revalidatePath("/admin");
   return { ok: true as const };
@@ -594,6 +594,47 @@ export async function markAllNotificationsRead() {
   await db.update(notifications).set({ read: true }).where(and(eq(notifications.barberId, barber.id), eq(notifications.read, false)));
   revalidatePath("/admin");
   return { ok: true as const };
+}
+
+/* ================= PUSH SUBSCRIPTIONS (Web Push) ================= */
+
+export interface PushSubscriptionInput {
+  endpoint: string;
+  keys: { p256dh: string; auth: string };
+}
+
+export async function savePushSubscription(sub: PushSubscriptionInput) {
+  const user = await ensureAdmin();
+  const { barber } = await getContext();
+  if (!sub.endpoint || !sub.keys?.p256dh || !sub.keys?.auth) {
+    return { ok: false as const, error: "Suscripción inválida." };
+  }
+  await db
+    .insert(pushSubscriptions)
+    .values({ barberId: barber.id, endpoint: sub.endpoint, p256dh: sub.keys.p256dh, auth: sub.keys.auth })
+    .onConflictDoUpdate({
+      target: pushSubscriptions.endpoint,
+      set: { barberId: barber.id, p256dh: sub.keys.p256dh, auth: sub.keys.auth },
+    });
+  await audit(user.id, user.name, "push_subscribe", "Activó notificaciones push en este dispositivo");
+  return { ok: true as const };
+}
+
+export async function deletePushSubscription(endpoint: string) {
+  await ensureAdmin();
+  await db.delete(pushSubscriptions).where(eq(pushSubscriptions.endpoint, endpoint));
+  return { ok: true as const };
+}
+
+export async function getPushSubscriptionStatus(endpoint: string) {
+  await ensureAdmin();
+  if (!endpoint) return { subscribed: false as const };
+  const rows = await db
+    .select({ id: pushSubscriptions.id })
+    .from(pushSubscriptions)
+    .where(eq(pushSubscriptions.endpoint, endpoint))
+    .limit(1);
+  return { subscribed: rows.length > 0 };
 }
 
 /* ================= SETTINGS ================= */

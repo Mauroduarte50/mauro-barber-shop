@@ -185,6 +185,22 @@ export const notifications = pgTable(
   (t) => [index("notif_barber_read_idx").on(t.barberId, t.read)],
 );
 
+export const pushSubscriptions = pgTable(
+  "push_subscriptions",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    barberId: uuid("barber_id")
+      .notNull()
+      .references(() => barbers.id, { onDelete: "cascade" }),
+    endpoint: text("endpoint").notNull().unique(),
+    p256dh: text("p256dh").notNull(),
+    auth: text("auth").notNull(),
+    userAgent: text("user_agent"),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [index("push_sub_barber_idx").on(t.barberId)],
+);
+
 export const payments = pgTable("payments", {
   id: uuid("id").primaryKey().defaultRandom(),
   appointmentId: uuid("appointment_id")
@@ -230,6 +246,7 @@ export type Service = typeof services.$inferSelect;
 export type Client = typeof clients.$inferSelect;
 export type Appointment = typeof appointments.$inferSelect;
 export type Notification = typeof notifications.$inferSelect;
+export type PushSubscription = typeof pushSubscriptions.$inferSelect;
 
 export const APPOINTMENT_STATUSES = [
   "pendiente",
