@@ -121,6 +121,11 @@ export default async function AdminLayout({ children }: { children: ReactNode })
                 {item.icon} {item.label}
               </Link>
             ))}
+            <form action={logoutAction} className="contents">
+              <button className="chip flex min-h-11 shrink-0 items-center border border-stone-200 bg-stone-100 px-3 py-1.5 text-red-500 dark:border-stone-700 dark:bg-stone-900 dark:text-red-400">
+                🚪 Cerrar sesión
+              </button>
+            </form>
           </nav>
         </header>
         <main className="p-4 sm:p-6">
