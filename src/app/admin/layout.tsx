@@ -16,20 +16,25 @@ import { BrandFooter } from "@/components/brand-footer";
 // This `manifest` field overrides the root layout's file-convention-derived
 // one for every route under this segment (singular metadata fields are
 // resolved by nearest-segment-wins, same rule as `title`/`description`).
-export const metadata: Metadata = {
-  title: "Panel",
-  applicationName: "Mauro Barber Shop — Panel",
-  manifest: "/admin-manifest.webmanifest",
-  icons: {
-    icon: "/images/icon-admin-192.png",
-    apple: "/images/icon-admin-192.png",
-  },
-  appleWebApp: {
-    capable: true,
-    title: "Mauro Panel",
-    statusBarStyle: "black-translucent",
-  },
-};
+export async function generateMetadata(): Promise<Metadata> {
+  const barber = await getDefaultBarber();
+  const settings = barber ? await getAppSettings(barber.id) : null;
+  const name = settings?.businessName || "Barbería";
+  return {
+    title: "Panel",
+    applicationName: `${name} — Panel`,
+    manifest: "/admin-manifest.webmanifest",
+    icons: {
+      icon: "/images/icon-admin-192.png",
+      apple: "/images/icon-admin-192.png",
+    },
+    appleWebApp: {
+      capable: true,
+      title: `${name} Panel`,
+      statusBarStyle: "black-translucent",
+    },
+  };
+}
 
 const NAV = [
   { href: "/admin", label: "Dashboard", icon: "📊" },

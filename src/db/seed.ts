@@ -50,12 +50,12 @@ async function main() {
   const [barber] = await db
     .insert(barbers)
     .values({
-      name: "Mauro Barber",
-      slug: "mauro-barber",
+      name: "Tu Barbero",
+      slug: "barbero-principal",
       bio: "Barbero profesional con más de 8 años de experiencia. Especialista en fades, cortes clásicos y arreglo de barba.",
       photo: "/images/barber.jpg",
       phone: "+57 300 123 4567",
-      instagram: "maurobarber",
+      instagram: "",
     })
     .returning();
 
@@ -82,13 +82,13 @@ async function main() {
 
   // Settings
   const settings: Record<string, string> = {
-    business_name: "MAURO BARBER SHOP",
+    business_name: "Tu Barbería",
     business_tagline: "Estilo clásico, cortes de precisión.",
     business_description: "Barbería moderna especializada en cortes clásicos, fades y arreglo de barba.",
     business_address: "Cra 15 # 82 - 40, Bogotá, Colombia",
     business_phone: "+57 300 123 4567",
     business_whatsapp: "+57 300 123 4567",
-    business_instagram: "maurobarber",
+    business_instagram: "",
     currency: "COP",
     timezone: TZ,
     cancellation_policy: "Puedes cancelar tu cita hasta 2 horas antes sin costo.",

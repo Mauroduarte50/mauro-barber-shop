@@ -117,6 +117,11 @@ export function waLink(phone: string, text: string): string {
   return `https://wa.me/${p}?text=${encodeURIComponent(text)}`;
 }
 
+/** Pre-written WhatsApp thank-you message sent to a client after marking their appointment "atendida". */
+export function thankYouWhatsAppMessage(clientName: string, businessName: string, barberName: string): string {
+  return `¡Hola ${clientName}! Muchas gracias por tu visita a ${businessName}. Espero que te haya encantado tu corte. ¡Te esperamos pronto! — ${barberName}`;
+}
+
 export function buildICS(start: Date, end: Date, title: string, desc: string, location: string): string {
   const fmt = (d: Date) =>
     d.toISOString().replace(/[-:]/g, "").replace(/\.\d{3}/, "");

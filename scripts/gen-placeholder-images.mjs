@@ -34,7 +34,7 @@ function heroSvg(w, h) {
   <g transform="translate(${cx - s},${cy - s}) scale(${(s * 2) / 24})" stroke="${AMBER}" stroke-width="1.4" fill="none" stroke-linecap="round" stroke-linejoin="round" opacity="0.9">
     <path d="${scissorsPath}"/>
   </g>
-  <text x="${cx}" y="${cy + s * 1.9}" text-anchor="middle" font-family="Arial, sans-serif" font-weight="900" font-size="${w * 0.045}" fill="#ffffff" letter-spacing="${w * 0.004}">MAURO BARBER SHOP</text>
+  <text x="${cx}" y="${cy + s * 1.9}" text-anchor="middle" font-family="Arial, sans-serif" font-weight="900" font-size="${w * 0.045}" fill="#ffffff" letter-spacing="${w * 0.004}">TU BARBERÍA</text>
   <text x="${cx}" y="${cy + s * 2.6}" text-anchor="middle" font-family="Arial, sans-serif" font-weight="600" font-size="${w * 0.02}" fill="${AMBER}" letter-spacing="${w * 0.003}">ESTILO CLÁSICO · CORTES DE PRECISIÓN</text>
 </svg>`;
 }
@@ -56,8 +56,8 @@ function portraitSvg(w, h) {
   <g transform="translate(${cx - s / 2},${cy - s / 2}) scale(${s / 24})" stroke="${AMBER}" stroke-width="1.6" fill="none" stroke-linecap="round" stroke-linejoin="round">
     <path d="${scissorsPath}"/>
   </g>
-  <text x="${cx}" y="${h * 0.82}" text-anchor="middle" font-family="Arial, sans-serif" font-weight="900" font-size="${w * 0.075}" fill="#ffffff">MAURO</text>
-  <text x="${cx}" y="${h * 0.89}" text-anchor="middle" font-family="Arial, sans-serif" font-weight="600" font-size="${w * 0.045}" fill="${AMBER}" letter-spacing="${w * 0.006}">BARBER</text>
+  <text x="${cx}" y="${h * 0.82}" text-anchor="middle" font-family="Arial, sans-serif" font-weight="900" font-size="${w * 0.075}" fill="#ffffff">TU</text>
+  <text x="${cx}" y="${h * 0.89}" text-anchor="middle" font-family="Arial, sans-serif" font-weight="600" font-size="${w * 0.045}" fill="${AMBER}" letter-spacing="${w * 0.006}">BARBERO</text>
 </svg>`;
 }
 

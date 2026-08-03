@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { changePassword, getSettingsData, saveSettingsData } from "@/lib/actions";
+import { changePassword, getBrandingInfo, getSettingsData, saveSettingsData, updateBarberName } from "@/lib/actions";
 import { DEFAULT_TZ } from "@/lib/utils";
 import PushNotificationButton from "@/components/push-notification-button";
 import FactoryResetPanel from "@/components/factory-reset-panel";
@@ -33,21 +33,23 @@ const QR_URL = `https://api.qrserver.com/v1/create-qr-code/?size=512x512&margin=
 
 export default function AdminSettings() {
   const [values, setValues] = useState<Record<string, string>>({});
+  const [barberName, setBarberName] = useState("");
   const [loaded, setLoaded] = useState(false);
   const [msg, setMsg] = useState("");
   const [pw, setPw] = useState({ current: "", next: "" });
   const [pwMsg, setPwMsg] = useState("");
 
   useEffect(() => {
-    getSettingsData().then((m) => {
+    Promise.all([getSettingsData(), getBrandingInfo()]).then(([m, branding]) => {
       setValues(m as unknown as Record<string, string>);
+      setBarberName(branding.barberName);
       setLoaded(true);
     });
   }, []);
 
   const save = async () => {
-    const res = await saveSettingsData(values);
-    setMsg(res.ok ? "Configuración guardada." : "Error al guardar.");
+    const [settingsRes, nameRes] = await Promise.all([saveSettingsData(values), updateBarberName(barberName)]);
+    setMsg(settingsRes.ok && nameRes.ok ? "Configuración guardada." : "Error al guardar.");
     setTimeout(() => setMsg(""), 2500);
   };
 
@@ -74,6 +76,18 @@ export default function AdminSettings() {
       <div className="grid gap-4 lg:grid-cols-2">
         <div className="card space-y-3">
           <h2 className="font-black uppercase">🏪 Información general</h2>
+          <div>
+            <label className="label">Nombre del barbero</label>
+            <input
+              className="input"
+              value={barberName}
+              onChange={(e) => setBarberName(e.target.value)}
+              placeholder="Ej. Juan Pérez"
+            />
+            <p className="mt-1 text-[11px] text-stone-400">
+              Aparece en la confirmación de reserva, WhatsApp y en la página principal.
+            </p>
+          </div>
           {FIELDS.map((f) => (
             <div key={f.key}>
               <label className="label">{f.label}</label>

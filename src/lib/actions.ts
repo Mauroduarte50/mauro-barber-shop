@@ -644,6 +644,24 @@ export async function getSettingsData() {
   return getSettingsMap(barber.id);
 }
 
+/** Barber's own name and business name — used to personalize client-facing messages. */
+export async function getBrandingInfo() {
+  const { barber, settings } = await getContext();
+  return { barberName: barber.name, businessName: settings.businessName };
+}
+
+export async function updateBarberName(name: string) {
+  const user = await ensureAdmin();
+  const { barber } = await getContext();
+  const clean = sanitizeText(name, 100);
+  if (!clean) return { ok: false as const, error: "El nombre no puede estar vacío." };
+  await db.update(barbers).set({ name: clean }).where(eq(barbers.id, barber.id));
+  await audit(user.id, user.name, "update_settings", "Actualizó el nombre del barbero");
+  revalidatePath("/admin/settings");
+  revalidatePath("/");
+  return { ok: true as const };
+}
+
 export async function saveSettingsData(input: Record<string, string>) {
   const user = await ensureAdmin();
   const { barber } = await getContext();

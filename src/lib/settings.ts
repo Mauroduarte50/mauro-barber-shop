@@ -4,13 +4,13 @@ import { settings as settingsTable, barbers, services, type Barber } from "@/db/
 import { DEFAULT_TZ } from "@/lib/utils";
 
 export const DEFAULT_SETTINGS: Record<string, string> = {
-  business_name: "MAURO BARBER SHOP",
+  business_name: "Tu Barbería",
   business_tagline: "Estilo clásico, cortes de precisión.",
   business_description: "Barbería moderna especializada en cortes clásicos, fades y arreglo de barba.",
   business_address: "Cra 15 # 82 - 40, Bogotá, Colombia",
   business_phone: "+57 300 123 4567",
   business_whatsapp: "+57 300 123 4567",
-  business_instagram: "maurobarber",
+  business_instagram: "",
   business_facebook: "",
   currency: "COP",
   timezone: DEFAULT_TZ,

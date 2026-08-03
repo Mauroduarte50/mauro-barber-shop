@@ -9,7 +9,7 @@ export const dynamic = "force-dynamic";
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000";
 
 export default async function HomePage() {
-  const barber = (await getDefaultBarber()) ?? (await getBarberBySlug("mauro-barber"));
+  const barber = (await getDefaultBarber()) ?? (await getBarberBySlug("barbero-principal"));
   const settings = await getAppSettings(barber?.id ?? "");
   const services = barber ? await getActiveServices(barber.id) : [];
 

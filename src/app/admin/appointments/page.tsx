@@ -5,12 +5,13 @@ import { useSearchParams } from "next/navigation";
 import {
   cancelAppointment,
   createAppointment,
+  getBrandingInfo,
   listAppointments,
   listServices,
   setAppointmentStatus,
 } from "@/lib/actions";
 import { APPOINTMENT_STATUSES, STATUS_LABELS } from "@/db/schema";
-import { money } from "@/lib/utils";
+import { isValidPhone, money, thankYouWhatsAppMessage, waLink } from "@/lib/utils";
 
 const STATUS_COLORS: Record<string, string> = {
   pendiente: "bg-amber-500/15 text-amber-600 dark:text-amber-400",
@@ -35,6 +36,12 @@ export default function AdminAppointments() {
   const [form, setForm] = useState({ clientName: "", clientPhone: "", clientEmail: "", serviceId: "", date: "", time: "09:00", notes: "" });
   const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null);
   const [busy, setBusy] = useState(false);
+  const [branding, setBranding] = useState({ barberName: "tu barbero", businessName: "la barbería" });
+  const [thankYouFor, setThankYouFor] = useState<Row | null>(null);
+
+  useEffect(() => {
+    getBrandingInfo().then((b) => setBranding({ barberName: b.barberName, businessName: b.businessName }));
+  }, []);
 
   const load = useCallback(async () => {
     const rows = await listAppointments({
@@ -74,7 +81,9 @@ export default function AdminAppointments() {
   };
 
   const changeStatus = async (id: string, status: string) => {
+    const row = rows.find((r) => r.id === id);
     await setAppointmentStatus(id, status);
+    if (status === "atendida" && row) setThankYouFor(row);
     load();
   };
 
@@ -181,12 +190,50 @@ export default function AdminAppointments() {
                 <option key={s} value={s}>{STATUS_LABELS[s]}</option>
               ))}
             </select>
+            {a.status === "atendida" && (
+              <button onClick={() => setThankYouFor(a)} className="btn-ghost btn-sm" title="Enviar agradecimiento por WhatsApp">
+                💬
+              </button>
+            )}
             {a.status !== "cancelada" && a.status !== "atendida" && (
               <button onClick={() => cancel(a.id)} className="btn-ghost btn-sm text-red-500 dark:text-red-400">✕</button>
             )}
           </div>
         ))}
       </div>
+
+      {thankYouFor && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4" role="dialog" aria-modal="true">
+          <div className="card w-full max-w-md bg-white dark:bg-stone-900">
+            <p className="text-3xl">✅</p>
+            <h3 className="mt-1 font-black uppercase">Cita marcada como atendida</h3>
+            <p className="mt-2 text-sm text-stone-500 dark:text-stone-400">
+              ¿Quieres enviarle un mensaje de agradecimiento a <strong>{thankYouFor.clientName}</strong> por WhatsApp?
+            </p>
+            {isValidPhone(thankYouFor.clientPhone) ? (
+              <a
+                href={waLink(
+                  thankYouFor.clientPhone,
+                  thankYouWhatsAppMessage(thankYouFor.clientName, branding.businessName, branding.barberName),
+                )}
+                target="_blank"
+                rel="noopener noreferrer"
+                onClick={() => setThankYouFor(null)}
+                className="btn-primary mt-4 w-full"
+              >
+                💬 Enviar agradecimiento por WhatsApp
+              </a>
+            ) : (
+              <p className="mt-4 rounded-lg bg-red-500/10 px-3 py-2 text-sm font-medium text-red-500">
+                Esta cita no tiene un número de teléfono válido, así que no se puede abrir WhatsApp.
+              </p>
+            )}
+            <button onClick={() => setThankYouFor(null)} className="btn-ghost mt-2 w-full">
+              Ahora no
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

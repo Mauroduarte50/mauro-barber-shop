@@ -1,9 +1,19 @@
 import type { MetadataRoute } from "next";
+import { getDefaultBarber, getAppSettings } from "@/lib/settings";
 
-export default function manifest(): MetadataRoute.Manifest {
+// Reads the business name from the DB on every request — without this,
+// Next.js prerenders the manifest once at build time and freezes whatever
+// name existed then, so a later change in /admin/settings would never show.
+export const dynamic = "force-dynamic";
+
+export default async function manifest(): Promise<MetadataRoute.Manifest> {
+  const barber = await getDefaultBarber();
+  const settings = await getAppSettings(barber?.id ?? "");
+  const name = settings.businessName || "Barbería";
+
   return {
-    name: "Mauro Barber Shop — Reservas",
-    short_name: "Mauro Barber",
+    name: `${name} — Reservas`,
+    short_name: name,
     description: "Reserva tu cita en la barbería desde tu celular.",
     start_url: "/",
     scope: "/",
