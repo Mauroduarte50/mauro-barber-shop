@@ -4,11 +4,12 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { and, eq } from "drizzle-orm";
 import { db } from "@/db";
-import { notifications } from "@/db/schema";
+import { barbers, notifications } from "@/db/schema";
 import { getCurrentUser } from "@/lib/auth";
-import { getDefaultBarber, getAppSettings } from "@/lib/settings";
+import { getDefaultBarber, getAppSettings, resolveOwnBarber } from "@/lib/settings";
 import { logoutAction } from "@/lib/actions";
 import { BrandFooter } from "@/components/brand-footer";
+import { BarberScopeProvider, BarberScopeSelect } from "@/components/barber-scope";
 
 // Own manifest + icons so a home-screen icon installed from /admin (the
 // barber's panel) opens straight into /admin — distinct from the client
@@ -36,7 +37,7 @@ export async function generateMetadata(): Promise<Metadata> {
   };
 }
 
-const NAV = [
+const BASE_NAV = [
   { href: "/admin", label: "Dashboard", icon: "📊" },
   { href: "/admin/calendar", label: "Calendario", icon: "📅" },
   { href: "/admin/appointments", label: "Citas", icon: "✂️" },
@@ -47,16 +48,20 @@ const NAV = [
   { href: "/admin/income", label: "Ingresos", icon: "💰" },
   { href: "/admin/stats", label: "Estadísticas", icon: "📈" },
   { href: "/admin/notifications", label: "Notificaciones", icon: "🔔" },
-  { href: "/admin/settings", label: "Configuración", icon: "⚙️" },
 ];
+const ADMIN_ONLY_NAV = [{ href: "/admin/team", label: "Equipo", icon: "🧑‍🤝‍🧑" }];
+const SETTINGS_NAV = { href: "/admin/settings", label: "Configuración", icon: "⚙️" };
 
 export const dynamic = "force-dynamic";
 
 export default async function AdminLayout({ children }: { children: ReactNode }) {
   const user = await getCurrentUser();
   if (!user) redirect("/login");
-  const barber = await getDefaultBarber();
+  const barber = await resolveOwnBarber(user);
   const settings = barber ? await getAppSettings(barber.id) : null;
+  const isAdmin = user.role === "admin";
+
+  const NAV = [...BASE_NAV, ...(isAdmin ? ADMIN_ONLY_NAV : []), SETTINGS_NAV];
 
   const unread = barber
     ? await db
@@ -65,7 +70,11 @@ export default async function AdminLayout({ children }: { children: ReactNode })
         .where(and(eq(notifications.barberId, barber.id), eq(notifications.read, false)))
     : [];
 
+  const activeBarbers = isAdmin ? await db.select().from(barbers).where(eq(barbers.active, true)) : [];
+  const scopeBarbers = activeBarbers.length >= 2 ? activeBarbers.map((b) => ({ id: b.id, name: b.name })) : [];
+
   return (
+    <BarberScopeProvider barbers={scopeBarbers}>
     <div className="flex min-h-screen">
       {/* Sidebar (desktop) */}
       <aside className="fixed inset-y-0 left-0 z-40 hidden w-60 flex-col border-r border-stone-200 bg-white p-4 dark:border-stone-800 dark:bg-stone-900 md:flex">
@@ -76,6 +85,11 @@ export default async function AdminLayout({ children }: { children: ReactNode })
             <p className="text-[10px] uppercase tracking-wider text-stone-400">Panel del barbero</p>
           </div>
         </Link>
+        {scopeBarbers.length >= 2 && (
+          <div className="mb-3">
+            <BarberScopeSelect />
+          </div>
+        )}
         <nav className="flex-1 space-y-1 overflow-y-auto">
           {NAV.map((item) => (
             <Link key={item.href} href={item.href} className="navlink">
@@ -111,6 +125,11 @@ export default async function AdminLayout({ children }: { children: ReactNode })
               )}
             </Link>
           </div>
+          {scopeBarbers.length >= 2 && (
+            <div className="px-3 pb-2">
+              <BarberScopeSelect />
+            </div>
+          )}
           <nav className="scrollbar-hide flex gap-1 overflow-x-auto px-3 pb-2">
             {NAV.map((item) => (
               <Link
@@ -134,5 +153,6 @@ export default async function AdminLayout({ children }: { children: ReactNode })
         </main>
       </div>
     </div>
+    </BarberScopeProvider>
   );
 }

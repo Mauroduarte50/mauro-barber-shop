@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { eq } from "drizzle-orm";
 import { db } from "@/db";
 import { users } from "@/db/schema";
-import { createSession, destroySession, verifyPassword } from "@/lib/auth";
+import { createSession, destroySession, isAccountActive, verifyPassword } from "@/lib/auth";
 import { audit } from "@/lib/system";
 import { sanitizeText } from "@/lib/utils";
 
@@ -28,6 +28,9 @@ export async function POST(req: Request) {
   if (!user || !(await verifyPassword(password, user.passwordHash))) {
     attempts.set(ip, { count: (rec?.count ?? 0) + 1, resetAt: Date.now() + 10 * 60_000 });
     return NextResponse.json({ error: "Correo o contraseña incorrectos." }, { status: 401 });
+  }
+  if (!(await isAccountActive(user))) {
+    return NextResponse.json({ error: "Esta cuenta ya no tiene acceso al panel." }, { status: 403 });
   }
   attempts.delete(ip);
   await createSession(user.id);

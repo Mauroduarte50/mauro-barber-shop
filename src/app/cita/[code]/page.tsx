@@ -81,7 +81,7 @@ function ManageAppointment() {
   const [busy, setBusy] = useState(false);
   const [lookupMode, setLookupMode] = useState(false);
   const [lookup, setLookup] = useState({ query: "", type: "code" as "code" | "phone" });
-  const [lookupResults, setLookupResults] = useState<{ code: string; serviceName: string; startTime: string; status: string }[]>([]);
+  const [lookupResults, setLookupResults] = useState<{ code: string; serviceName: string; startTime: string; status: string; barberName?: string }[]>([]);
 
   const tz = booking?.tz ?? "America/Bogota";
 
@@ -204,7 +204,9 @@ function ManageAppointment() {
               {lookupResults.map((b) => (
                 <Link key={b.code} href={`/cita/${b.code}`} className="card block p-3 transition hover:border-brand-500">
                   <p className="font-bold">{b.code}</p>
-                  <p className="text-sm text-stone-500">{b.serviceName} · {new Date(b.startTime).toLocaleDateString("es-CO")}</p>
+                  <p className="text-sm text-stone-500">
+                    {b.serviceName} · {new Date(b.startTime).toLocaleDateString("es-CO")} {b.barberName ? `· ${b.barberName}` : ""}
+                  </p>
                 </Link>
               ))}
             </div>

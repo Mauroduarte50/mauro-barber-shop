@@ -20,6 +20,16 @@ async function main() {
     process.exit(1);
   }
 
+  const slug = slugify(BARBER_NAME);
+  const existingBarber = await db.select().from(barbers).where(eq(barbers.slug, slug)).limit(1);
+  let barber = existingBarber[0];
+  if (barber) {
+    console.log(`Ya existe un barbero con slug "${slug}"; no se creó ninguno nuevo.`);
+  } else {
+    [barber] = await db.insert(barbers).values({ name: BARBER_NAME, slug, active: true }).returning();
+    console.log(`Barbero creado: ${BARBER_NAME} (/${slug})`);
+  }
+
   const existingUser = await db.select().from(users).where(eq(users.email, ADMIN_EMAIL)).limit(1);
   if (existingUser.length) {
     console.log(`Ya existe un usuario con ese correo (${ADMIN_EMAIL}); no se creó ninguno nuevo.`);
@@ -29,17 +39,9 @@ async function main() {
       email: ADMIN_EMAIL,
       passwordHash: await hashPassword(ADMIN_PASSWORD),
       role: "admin",
+      barberId: barber.id,
     });
-    console.log(`Usuario admin creado: ${ADMIN_EMAIL}`);
-  }
-
-  const slug = slugify(BARBER_NAME);
-  const existingBarber = await db.select().from(barbers).where(eq(barbers.slug, slug)).limit(1);
-  if (existingBarber.length) {
-    console.log(`Ya existe un barbero con slug "${slug}"; no se creó ninguno nuevo.`);
-  } else {
-    await db.insert(barbers).values({ name: BARBER_NAME, slug, active: true });
-    console.log(`Barbero creado: ${BARBER_NAME} (/${slug})`);
+    console.log(`Usuario admin creado: ${ADMIN_EMAIL} (vinculado al barbero ${BARBER_NAME})`);
   }
 
   console.log("Listo. No se insertaron servicios, horarios ni datos de ejemplo — configúralos desde /admin.");

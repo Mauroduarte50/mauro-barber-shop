@@ -6,6 +6,13 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { buildICS, money, waLink } from "@/lib/utils";
 import { BrandFooter } from "@/components/brand-footer";
 
+interface BarberOption {
+  id: string;
+  slug: string;
+  name: string;
+  photo: string | null;
+  bio: string | null;
+}
 interface Config {
   barber: { id: string; name: string; slug: string; photo: string | null };
   business: { name: string; tagline: string; whatsapp: string; instagram: string };
@@ -89,6 +96,8 @@ export default function ReservarPage() {
 function ReservarWizard() {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const [barbers, setBarbers] = useState<BarberOption[] | null>(null);
+  const [barberSlug, setBarberSlug] = useState<string | null>(null);
   const [config, setConfig] = useState<Config | null>(null);
   const [services, setServices] = useState<Service[]>([]);
   const [step, setStep] = useState(0);
@@ -103,12 +112,36 @@ function ReservarWizard() {
   const [result, setResult] = useState<BookingResult | null>(null);
   const [form, setForm] = useState({ name: "", phone: "", email: "", notes: "" });
 
+  // Resolve which barber this booking is for, before loading anything else.
+  // Skips the picker entirely when there's only one active barber — zero
+  // extra friction for the common single-barber case.
   useEffect(() => {
     (async () => {
       try {
+        const r = await fetch("/api/public/barbers", { cache: "no-store" });
+        const data = await r.json();
+        const list: BarberOption[] = data.barbers ?? [];
+        setBarbers(list);
+        if (list.length <= 1) {
+          setBarberSlug(list[0]?.slug ?? null);
+          return;
+        }
+        const pre = searchParams.get("barber");
+        if (pre && list.some((b) => b.slug === pre)) setBarberSlug(pre);
+      } catch {
+        setBarbers([]);
+      }
+    })();
+  }, [searchParams]);
+
+  useEffect(() => {
+    if (!barberSlug) return;
+    (async () => {
+      try {
+        const qs = `?barber=${encodeURIComponent(barberSlug)}`;
         const [c, s] = await Promise.all([
-          fetch("/api/public/config", { cache: "no-store" }).then((r) => r.json()),
-          fetch("/api/public/services", { cache: "no-store" }).then((r) => r.json()),
+          fetch(`/api/public/config${qs}`, { cache: "no-store" }).then((r) => r.json()),
+          fetch(`/api/public/services${qs}`, { cache: "no-store" }).then((r) => r.json()),
         ]);
         setConfig(c);
         setServices(s.services);
@@ -124,7 +157,7 @@ function ReservarWizard() {
         setError("No se pudo cargar la información. Verifica tu conexión.");
       }
     })();
-  }, [searchParams]);
+  }, [barberSlug, searchParams]);
 
   const tz = config?.settings.timezone ?? "America/Bogota";
 
@@ -132,14 +165,17 @@ function ReservarWizard() {
     async (duration: number) => {
       setLoading(true);
       try {
-        const r = await fetch(`/api/public/availability?range=${config?.settings.maxAdvanceDays ?? 30}&duration=${duration}`, { cache: "no-store" });
+        const r = await fetch(
+          `/api/public/availability?range=${config?.settings.maxAdvanceDays ?? 30}&duration=${duration}&barber=${encodeURIComponent(barberSlug ?? "")}`,
+          { cache: "no-store" },
+        );
         const data = await r.json();
         setDays(data.days ?? []);
       } finally {
         setLoading(false);
       }
     },
-    [config],
+    [config, barberSlug],
   );
 
   useEffect(() => {
@@ -155,7 +191,7 @@ function ReservarWizard() {
       setLoading(true);
       try {
         const r = await fetch(
-          `/api/public/availability?date=${d}&duration=${service?.durationMin ?? 30}`,
+          `/api/public/availability?date=${d}&duration=${service?.durationMin ?? 30}&barber=${encodeURIComponent(barberSlug ?? "")}`,
           { cache: "no-store" },
         );
         const data = await r.json();
@@ -165,7 +201,7 @@ function ReservarWizard() {
         setLoading(false);
       }
     },
-    [service],
+    [service, barberSlug],
   );
 
   const submit = async () => {
@@ -286,6 +322,55 @@ function ReservarWizard() {
     );
   }
 
+  /* ---------- resolving/choosing barber (before anything else) ---------- */
+  if (barbers === null) {
+    return <main className="flex min-h-screen items-center justify-center"><p className="text-stone-400">Cargando…</p></main>;
+  }
+  if (barbers.length === 0) {
+    return (
+      <main className="flex min-h-screen items-center justify-center px-5 text-center">
+        <p className="text-stone-400">No hay barberos disponibles para reservar en este momento.</p>
+      </main>
+    );
+  }
+  if (barbers.length >= 2 && !barberSlug) {
+    return (
+      <main className="mx-auto min-h-screen w-full max-w-2xl px-4 py-10">
+        <div className="mb-6 text-center">
+          <p className="text-xs font-bold uppercase tracking-[0.3em] text-brand-500">✂️ Reserva en línea</p>
+          <h1 className="mt-1 text-3xl font-black uppercase">Elige tu barbero</h1>
+          <p className="mt-1 text-sm text-stone-500 dark:text-stone-400">¿Con quién quieres tu cita?</p>
+        </div>
+        <div className="space-y-3">
+          {barbers.map((b) => (
+            <button
+              key={b.id}
+              onClick={() => setBarberSlug(b.slug)}
+              className="card flex w-full items-center gap-4 text-left transition hover:-translate-y-0.5"
+            >
+              {b.photo ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img src={b.photo} alt={b.name} className="h-16 w-16 shrink-0 rounded-full object-cover" />
+              ) : (
+                <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-full bg-brand-500/15 text-2xl font-black text-brand-600 dark:text-brand-400">
+                  {b.name.charAt(0).toUpperCase()}
+                </div>
+              )}
+              <div>
+                <p className="text-lg font-black uppercase">{b.name}</p>
+                {b.bio && <p className="text-sm text-stone-500 dark:text-stone-400">{b.bio}</p>}
+              </div>
+            </button>
+          ))}
+        </div>
+        <div className="mt-8 text-center">
+          <button onClick={() => router.push("/")} className="inline-block py-2 text-xs text-stone-400 underline">← Volver al inicio</button>
+        </div>
+        <BrandFooter className="mt-2" />
+      </main>
+    );
+  }
+
   return (
     <main className="mx-auto min-h-screen w-full max-w-2xl px-4 py-6 pb-28">
       {/* header */}
@@ -293,6 +378,11 @@ function ReservarWizard() {
         <p className="text-xs font-bold uppercase tracking-[0.3em] text-brand-500">✂️ Reserva en línea</p>
         <h1 className="mt-1 text-3xl font-black uppercase">{config?.business.name ?? "Barbería"}</h1>
         <p className="mt-1 text-sm text-stone-500 dark:text-stone-400">Con {config?.barber.name ?? "tu barbero"} · {config?.business.tagline ?? ""}</p>
+        {barbers.length >= 2 && step === 0 && (
+          <button onClick={() => setBarberSlug(null)} className="mt-1 text-xs text-brand-500 underline">
+            Cambiar de barbero
+          </button>
+        )}
       </div>
 
       {/* progress */}

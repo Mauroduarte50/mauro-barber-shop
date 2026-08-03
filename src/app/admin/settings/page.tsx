@@ -1,12 +1,21 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { changePassword, getBrandingInfo, getSettingsData, saveSettingsData, updateBarberName } from "@/lib/actions";
+import {
+  changePassword,
+  getBrandingInfo,
+  getGeneralSettingsData,
+  getBarberSettingsData,
+  getMyRole,
+  saveGeneralSettings,
+  saveBarberSettingsData,
+  updateBarberName,
+} from "@/lib/actions";
 import { DEFAULT_TZ } from "@/lib/utils";
 import PushNotificationButton from "@/components/push-notification-button";
 import FactoryResetPanel from "@/components/factory-reset-panel";
 
-const FIELDS: { key: string; label: string; placeholder?: string; hint?: string }[] = [
+const GENERAL_FIELDS: { key: string; label: string; placeholder?: string; hint?: string }[] = [
   { key: "business_name", label: "Nombre de la barbería" },
   { key: "business_tagline", label: "Frase corta" },
   { key: "business_description", label: "Descripción" },
@@ -32,6 +41,8 @@ const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000";
 const QR_URL = `https://api.qrserver.com/v1/create-qr-code/?size=512x512&margin=16&data=${encodeURIComponent(`${SITE_URL}/reservar`)}`;
 
 export default function AdminSettings() {
+  const [isAdmin, setIsAdmin] = useState(false);
+  const [general, setGeneral] = useState<Record<string, string>>({});
   const [values, setValues] = useState<Record<string, string>>({});
   const [barberName, setBarberName] = useState("");
   const [loaded, setLoaded] = useState(false);
@@ -40,16 +51,27 @@ export default function AdminSettings() {
   const [pwMsg, setPwMsg] = useState("");
 
   useEffect(() => {
-    Promise.all([getSettingsData(), getBrandingInfo()]).then(([m, branding]) => {
-      setValues(m as unknown as Record<string, string>);
-      setBarberName(branding.barberName);
-      setLoaded(true);
+    getMyRole().then(({ role }) => {
+      const admin = role === "admin";
+      setIsAdmin(admin);
+      Promise.all([
+        getBarberSettingsData(),
+        getBrandingInfo(),
+        admin ? getGeneralSettingsData() : Promise.resolve(null),
+      ]).then(([m, branding, g]) => {
+        setValues(m as unknown as Record<string, string>);
+        setBarberName(branding.barberName);
+        if (g) setGeneral(g as unknown as Record<string, string>);
+        setLoaded(true);
+      });
     });
   }, []);
 
   const save = async () => {
-    const [settingsRes, nameRes] = await Promise.all([saveSettingsData(values), updateBarberName(barberName)]);
-    setMsg(settingsRes.ok && nameRes.ok ? "Configuración guardada." : "Error al guardar.");
+    const calls = [saveBarberSettingsData(values), updateBarberName(barberName)];
+    if (isAdmin) calls.push(saveGeneralSettings(general));
+    const results = await Promise.all(calls);
+    setMsg(results.every((r) => r.ok) ? "Configuración guardada." : "Error al guardar.");
     setTimeout(() => setMsg(""), 2500);
   };
 
@@ -74,39 +96,48 @@ export default function AdminSettings() {
       {msg && <div className="rounded-lg bg-emerald-500/10 px-3 py-2 text-sm font-medium text-emerald-600">{msg}</div>}
 
       <div className="grid gap-4 lg:grid-cols-2">
-        <div className="card space-y-3">
-          <h2 className="font-black uppercase">🏪 Información general</h2>
-          <div>
-            <label className="label">Nombre del barbero</label>
-            <input
-              className="input"
-              value={barberName}
-              onChange={(e) => setBarberName(e.target.value)}
-              placeholder="Ej. Juan Pérez"
-            />
-            <p className="mt-1 text-[11px] text-stone-400">
-              Aparece en la confirmación de reserva, WhatsApp y en la página principal.
-            </p>
-          </div>
-          {FIELDS.map((f) => (
-            <div key={f.key}>
-              <label className="label">{f.label}</label>
+        <div className="space-y-4">
+          <div className="card space-y-3">
+            <h2 className="font-black uppercase">👤 Mi perfil</h2>
+            <div>
+              <label className="label">Mi nombre</label>
               <input
                 className="input"
-                value={values[f.key] ?? ""}
-                placeholder={f.placeholder}
-                onChange={(e) => setValues({ ...values, [f.key]: e.target.value })}
+                value={barberName}
+                onChange={(e) => setBarberName(e.target.value)}
+                placeholder="Ej. Juan Pérez"
               />
-              {f.hint && <p className="mt-1 text-[11px] text-stone-400">{f.hint}</p>}
+              <p className="mt-1 text-[11px] text-stone-400">
+                Aparece en la confirmación de reserva, WhatsApp y en la página principal.
+              </p>
             </div>
-          ))}
+          </div>
+
+          {isAdmin && (
+            <div className="card space-y-3">
+              <h2 className="font-black uppercase">🏪 Información general del negocio</h2>
+              <p className="text-[11px] text-stone-400">Compartida por todos los barberos del equipo.</p>
+              {GENERAL_FIELDS.map((f) => (
+                <div key={f.key}>
+                  <label className="label">{f.label}</label>
+                  <input
+                    className="input"
+                    value={general[f.key] ?? ""}
+                    placeholder={f.placeholder}
+                    onChange={(e) => setGeneral({ ...general, [f.key]: e.target.value })}
+                  />
+                  {f.hint && <p className="mt-1 text-[11px] text-stone-400">{f.hint}</p>}
+                </div>
+              ))}
+            </div>
+          )}
         </div>
 
         <div className="space-y-4">
           <PushNotificationButton />
 
           <div className="card space-y-3">
-            <h2 className="font-black uppercase">⚖️ Reglas de reserva</h2>
+            <h2 className="font-black uppercase">⚖️ Mis reglas de reserva</h2>
             {NUMERIC.map((f) => (
               <div key={f.key}>
                 <label className="label">{f.label}</label>
@@ -150,7 +181,7 @@ export default function AdminSettings() {
         </div>
       </div>
 
-      <FactoryResetPanel />
+      {isAdmin && <FactoryResetPanel />}
     </div>
   );
 }

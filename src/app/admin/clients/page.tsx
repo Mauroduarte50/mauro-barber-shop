@@ -3,10 +3,11 @@
 import { useCallback, useEffect, useState } from "react";
 import { getClientDetail, listClients, updateClient } from "@/lib/actions";
 import { money } from "@/lib/utils";
+import { useBarberScope } from "@/components/barber-scope";
 
 interface ClientRow {
   id: string; name: string; phone: string; email: string | null; notes: string | null;
-  totalVisits: number; totalSpent: number; lastVisit: Date | null;
+  totalVisits: number; totalSpent: number; lastVisit: Date | null; barberName?: string;
 }
 interface Detail {
   client: { id: string; name: string; phone: string; email: string | null; notes: string | null; totalVisits: number; totalSpent: number; firstVisit: string | null; lastVisit: string | null };
@@ -15,16 +16,20 @@ interface Detail {
 }
 
 export default function AdminClients() {
+  const { scope } = useBarberScope();
   const [clients, setClients] = useState<ClientRow[]>([]);
   const [q, setQ] = useState("");
   const [detail, setDetail] = useState<Detail | null>(null);
   const [editing, setEditing] = useState(false);
   const [edit, setEdit] = useState({ name: "", phone: "", email: "", notes: "" });
 
-  const load = useCallback(async (query?: string) => {
-    const rows = await listClients(query || undefined);
-    setClients(rows as unknown as ClientRow[]);
-  }, []);
+  const load = useCallback(
+    async (query?: string) => {
+      const rows = await listClients(query || undefined, scope || undefined);
+      setClients(rows as unknown as ClientRow[]);
+    },
+    [scope],
+  );
 
   useEffect(() => {
     load();
@@ -65,7 +70,9 @@ export default function AdminClients() {
                 {c.name.charAt(0).toUpperCase()}
               </div>
               <div className="flex-1">
-                <p className="font-bold">{c.name}</p>
+                <p className="font-bold">
+                  {c.name} {c.barberName && scope === "all" && <span className="chip bg-brand-500/15 text-brand-600 dark:text-brand-400">{c.barberName}</span>}
+                </p>
                 <p className="text-xs text-stone-500 dark:text-stone-400">{c.phone} · {c.totalVisits} visitas · {money(c.totalSpent)}</p>
               </div>
               <span className="text-stone-400">→</span>

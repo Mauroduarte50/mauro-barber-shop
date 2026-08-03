@@ -3,13 +3,15 @@
 import { useEffect, useState } from "react";
 import { getStatsData } from "@/lib/actions";
 import { money } from "@/lib/utils";
+import { useBarberScope } from "@/components/barber-scope";
 
 export default function AdminStats() {
+  const { scope } = useBarberScope();
   const [data, setData] = useState<Awaited<ReturnType<typeof getStatsData>> | null>(null);
 
   useEffect(() => {
-    getStatsData().then(setData);
-  }, []);
+    getStatsData(scope || undefined).then(setData);
+  }, [scope]);
 
   if (!data) return <div className="card h-40 animate-pulse" />;
 

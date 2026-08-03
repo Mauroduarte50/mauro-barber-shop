@@ -4,15 +4,17 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { getOverview, markAllNotificationsRead, listNotifications } from "@/lib/actions";
 import { money } from "@/lib/utils";
+import { useBarberScope } from "@/components/barber-scope";
 
 export default function AdminDashboard() {
+  const { scope } = useBarberScope();
   const [data, setData] = useState<Awaited<ReturnType<typeof getOverview>> | null>(null);
   const [notifs, setNotifs] = useState<Awaited<ReturnType<typeof listNotifications>>>([]);
 
   useEffect(() => {
-    getOverview().then(setData);
+    getOverview(scope || undefined).then(setData);
     listNotifications().then(setNotifs);
-  }, []);
+  }, [scope]);
 
   if (!data) {
     return (
@@ -86,7 +88,9 @@ export default function AdminDashboard() {
                       {t.toLocaleTimeString("es-CO", { hour: "2-digit", minute: "2-digit" })}
                     </span>
                     <div className="flex-1">
-                      <p className="font-bold">{a.clientName}</p>
+                      <p className="font-bold">
+                        {a.clientName} {a.barberName && <span className="chip bg-brand-500/15 text-brand-600 dark:text-brand-400">{a.barberName}</span>}
+                      </p>
                       <p className="text-xs text-stone-500 dark:text-stone-400">{a.serviceName} · {a.durationMin} min</p>
                     </div>
                     <span className="hidden text-sm font-black text-brand-600 dark:text-brand-400 sm:block">{money(a.price)}</span>
@@ -107,7 +111,7 @@ export default function AdminDashboard() {
           <div className="mb-3 flex items-center justify-between">
             <h2 className="font-black uppercase">🔔 Notificaciones</h2>
             {data.unreadCount > 0 && (
-              <button onClick={() => markAllNotificationsRead().then(() => { getOverview().then(setData); setNotifs([]); })} className="text-xs font-semibold text-brand-500 underline">
+              <button onClick={() => markAllNotificationsRead().then(() => { getOverview(scope || undefined).then(setData); setNotifs([]); })} className="text-xs font-semibold text-brand-500 underline">
                 Marcar leídas
               </button>
             )}

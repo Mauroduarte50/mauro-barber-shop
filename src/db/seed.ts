@@ -37,16 +37,6 @@ async function main() {
   await db.delete(auditLogs);
   await db.delete(users);
 
-  const [admin] = await db
-    .insert(users)
-    .values({
-      name: "Administrador",
-      email: "admin@barberia.com",
-      passwordHash: await hashPassword("admin123"),
-      role: "admin",
-    })
-    .returning({ id: users.id, name: users.name });
-
   const [barber] = await db
     .insert(barbers)
     .values({
@@ -58,6 +48,17 @@ async function main() {
       instagram: "",
     })
     .returning();
+
+  const [admin] = await db
+    .insert(users)
+    .values({
+      name: "Administrador",
+      email: "admin@barberia.com",
+      passwordHash: await hashPassword("admin123"),
+      role: "admin",
+      barberId: barber.id,
+    })
+    .returning({ id: users.id, name: users.name });
 
   const svc = [
     { name: "Corte clásico", description: "Corte a tijera o máquina con acabado", price: 20000, durationMin: 30, sort: 1 },

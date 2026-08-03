@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { getCalendarData } from "@/lib/actions";
 import { money } from "@/lib/utils";
+import { useBarberScope } from "@/components/barber-scope";
 
 type View = "day" | "week" | "month";
 interface CalData {
@@ -13,7 +14,7 @@ interface CalData {
   gapMin: number;
   appointments: {
     id: string; code: string; serviceName: string; price: number; durationMin: number;
-    startTime: string; endTime: string; status: string; clientName: string; clientPhone: string;
+    startTime: string; endTime: string; status: string; clientName: string; clientPhone: string; barberName?: string;
   }[];
   workHours: { weekday: number; startMin: number; endMin: number }[];
   blocks: { date: string; startMin: number; endMin: number; reason: string | null }[];
@@ -33,6 +34,7 @@ function fmtDateStr(d: Date): string {
 }
 
 export default function AdminCalendar() {
+  const { scope } = useBarberScope();
   const [view, setView] = useState<View>("day");
   const [ref, setRef] = useState(() => fmtDateStr(new Date()));
   const [data, setData] = useState<CalData | null>(null);
@@ -40,8 +42,8 @@ export default function AdminCalendar() {
   const spanDays = view === "day" ? 1 : view === "week" ? 7 : 35;
 
   useEffect(() => {
-    getCalendarData(ref, spanDays).then(setData);
-  }, [ref, spanDays]);
+    getCalendarData(ref, spanDays, scope || undefined).then(setData);
+  }, [ref, spanDays, scope]);
 
   const move = (dir: number) => {
     const base = new Date(ref + "T00:00:00Z");
@@ -144,7 +146,7 @@ export default function AdminCalendar() {
                         <p className="font-bold">
                           {new Date(a.startTime).toLocaleTimeString("es-CO", { hour: "2-digit", minute: "2-digit" })} · {a.clientName}
                         </p>
-                        <p className="text-xs opacity-90">{a.serviceName} · {money(a.price)}</p>
+                        <p className="text-xs opacity-90">{a.serviceName} · {money(a.price)} {a.barberName ? `· ${a.barberName}` : ""}</p>
                       </Link>
                     ))}
                   </div>
@@ -179,7 +181,7 @@ export default function AdminCalendar() {
                         <p className="font-bold">
                           {new Date(a.startTime).toLocaleTimeString("es-CO", { hour: "2-digit", minute: "2-digit" })} · {a.clientName}
                         </p>
-                        <p className="opacity-90">{a.serviceName}</p>
+                        <p className="opacity-90">{a.serviceName} {a.barberName ? `· ${a.barberName}` : ""}</p>
                       </Link>
                     ))}
                   </div>

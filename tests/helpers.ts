@@ -10,13 +10,23 @@ export interface TestFixture {
   service60: Service;
 }
 
-/** Creates an isolated barber (own hours/services/settings) so tests never touch seeded data. */
-export async function setupTestBarber(): Promise<TestFixture> {
-  await teardownTestBarber();
+function slugFor(suffix?: string) {
+  return suffix ? `${TEST_SLUG}-${suffix}` : TEST_SLUG;
+}
+
+/**
+ * Creates an isolated barber (own hours/services/settings) so tests never
+ * touch seeded data. Pass a `suffix` (e.g. "a", "b") to create a second,
+ * independently-slugged barber alongside the default one — used by
+ * multi-barber isolation tests.
+ */
+export async function setupTestBarber(suffix?: string): Promise<TestFixture> {
+  const slug = slugFor(suffix);
+  await teardownTestBarber(suffix);
 
   const [barber] = await db
     .insert(barbers)
-    .values({ name: "Test Barber", slug: TEST_SLUG, active: true })
+    .values({ name: suffix ? `Test Barber ${suffix.toUpperCase()}` : "Test Barber", slug, active: true })
     .returning();
 
   const [service30, service60] = await db
@@ -51,8 +61,8 @@ export async function setupTestBarber(): Promise<TestFixture> {
   return { barber, service30, service60 };
 }
 
-export async function teardownTestBarber(): Promise<void> {
+export async function teardownTestBarber(suffix?: string): Promise<void> {
   // FKs cascade: deleting the barber cleans up services/clients/appointments/
   // business_hours/breaks/blocked_slots/notifications/payments/settings.
-  await db.delete(barbers).where(eq(barbers.slug, TEST_SLUG));
+  await db.delete(barbers).where(eq(barbers.slug, slugFor(suffix)));
 }

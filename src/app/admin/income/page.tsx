@@ -4,13 +4,14 @@ import { useEffect, useState } from "react";
 import { getIncomeData, recordPayment } from "@/lib/actions";
 import { PAYMENT_METHODS } from "@/db/schema";
 import { money } from "@/lib/utils";
+import { useBarberScope } from "@/components/barber-scope";
 
 interface PaymentRow {
   id: string; amount: number; method: string; status: string; createdAt: string;
-  code: string; clientName: string; serviceName: string; startTime: string;
+  code: string; clientName: string; serviceName: string; startTime: string; barberName?: string;
 }
 interface UnpaidRow {
-  id: string; code: string; clientName: string; serviceName: string; price: number; startTime: string; paymentMethod: string | null;
+  id: string; code: string; clientName: string; serviceName: string; price: number; startTime: string; paymentMethod: string | null; barberName?: string;
 }
 
 const METHOD_LABELS: Record<string, string> = {
@@ -23,19 +24,20 @@ const METHOD_LABELS: Record<string, string> = {
 };
 
 export default function AdminIncome() {
+  const { scope } = useBarberScope();
   const [payments, setPayments] = useState<PaymentRow[]>([]);
   const [unpaid, setUnpaid] = useState<UnpaidRow[]>([]);
   const [method, setMethod] = useState("efectivo");
 
   const load = async () => {
-    const data = await getIncomeData();
+    const data = await getIncomeData(scope || undefined);
     setPayments(data.payments as unknown as PaymentRow[]);
     setUnpaid(data.attendedUnpaid as unknown as UnpaidRow[]);
   };
 
   useEffect(() => {
     load();
-  }, []);
+  }, [scope]);
 
   const total = payments.reduce((s, p) => s + p.amount, 0);
 
@@ -64,7 +66,9 @@ export default function AdminIncome() {
             {unpaid.map((u) => (
               <div key={u.id} className="flex flex-wrap items-center gap-2 rounded-xl border border-amber-500/30 bg-amber-500/5 px-3 py-2">
                 <div className="min-w-[150px] flex-1">
-                  <p className="font-bold">{u.clientName}</p>
+                  <p className="font-bold">
+                    {u.clientName} {u.barberName && scope === "all" && <span className="chip bg-brand-500/15 text-brand-600 dark:text-brand-400">{u.barberName}</span>}
+                  </p>
                   <p className="text-xs text-stone-500 dark:text-stone-400">{u.serviceName} · {u.code}</p>
                 </div>
                 <p className="font-black">{money(u.price)}</p>
@@ -97,7 +101,9 @@ export default function AdminIncome() {
               {payments.map((p) => (
                 <tr key={p.id} className="border-b border-stone-100 dark:border-stone-800">
                   <td className="py-2 pr-3 whitespace-nowrap">{new Date(p.createdAt).toLocaleDateString("es-CO", { day: "2-digit", month: "2-digit", year: "numeric" })}</td>
-                  <td className="py-2 pr-3 font-semibold">{p.clientName}</td>
+                  <td className="py-2 pr-3 font-semibold">
+                    {p.clientName} {p.barberName && scope === "all" && <span className="chip bg-brand-500/15 text-brand-600 dark:text-brand-400">{p.barberName}</span>}
+                  </td>
                   <td className="py-2 pr-3">{p.serviceName} <span className="text-xs text-stone-400">{p.code}</span></td>
                   <td className="py-2 pr-3 capitalize">{METHOD_LABELS[p.method] ?? p.method}</td>
                   <td className="py-2 text-right font-black">{money(p.amount)}</td>

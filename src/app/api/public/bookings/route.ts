@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { and, eq } from "drizzle-orm";
 import { db } from "@/db";
-import { appointments, clients, services } from "@/db/schema";
+import { appointments, barbers as barbersTable, clients, services } from "@/db/schema";
 import { getBarberBySlug, getDefaultBarber, getAppSettings } from "@/lib/settings";
 import { createAppointmentTx, getDayAvailability } from "@/lib/availability";
 import { audit } from "@/lib/system";
@@ -130,8 +130,8 @@ export async function GET(req: Request) {
   const url = new URL(req.url);
   const phone = url.searchParams.get("phone");
   if (!phone) return NextResponse.json({ error: "Parámetro phone requerido" }, { status: 400 });
-  const barber = await getDefaultBarber();
-  if (!barber) return NextResponse.json({ error: "Sin barbero configurado" }, { status: 404 });
+  // Not scoped to one barber: a client may have booked with any of them, and
+  // shouldn't need to remember which one to find their appointment.
   const rows = await db
     .select({
       id: appointments.id,
@@ -140,10 +140,12 @@ export async function GET(req: Request) {
       startTime: appointments.startTime,
       status: appointments.status,
       clientName: clients.name,
+      barberName: barbersTable.name,
     })
     .from(appointments)
     .innerJoin(clients, eq(appointments.clientId, clients.id))
-    .where(and(eq(clients.phone, phone), eq(appointments.barberId, barber.id)))
+    .innerJoin(barbersTable, eq(appointments.barberId, barbersTable.id))
+    .where(eq(clients.phone, phone))
     .orderBy(appointments.startTime);
   return NextResponse.json({
     bookings: rows.map((r) => ({ ...r, startTime: r.startTime.toISOString() })),

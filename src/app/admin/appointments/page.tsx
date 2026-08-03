@@ -12,6 +12,7 @@ import {
 } from "@/lib/actions";
 import { APPOINTMENT_STATUSES, STATUS_LABELS } from "@/db/schema";
 import { isValidPhone, money, reminderWhatsAppMessage, thankYouWhatsAppMessage, waLink } from "@/lib/utils";
+import { useBarberScope } from "@/components/barber-scope";
 
 const STATUS_COLORS: Record<string, string> = {
   pendiente: "bg-amber-500/15 text-amber-600 dark:text-amber-400",
@@ -24,10 +25,11 @@ const STATUS_COLORS: Record<string, string> = {
 
 interface Row {
   id: string; code: string; serviceName: string; price: number; durationMin: number;
-  startTime: string; status: string; clientName: string; clientPhone: string;
+  startTime: string; status: string; clientName: string; clientPhone: string; barberName?: string;
 }
 
 export default function AdminAppointments() {
+  const { scope } = useBarberScope();
   const searchParams = useSearchParams();
   const [rows, setRows] = useState<Row[]>([]);
   const [services, setServices] = useState<{ id: string; name: string; price: number; durationMin: number }[]>([]);
@@ -45,21 +47,24 @@ export default function AdminAppointments() {
   }, []);
 
   const load = useCallback(async () => {
-    const rows = await listAppointments({
-      status: filter.status || undefined,
-      date: filter.date || undefined,
-      q: filter.q || undefined,
-    });
+    const rows = await listAppointments(
+      {
+        status: filter.status || undefined,
+        date: filter.date || undefined,
+        q: filter.q || undefined,
+      },
+      scope || undefined,
+    );
     setRows(rows);
-  }, [filter]);
+  }, [filter, scope]);
 
   useEffect(() => {
     load();
   }, [load]);
 
   useEffect(() => {
-    listServices().then(setServices);
-  }, []);
+    listServices(scope || undefined).then(setServices);
+  }, [scope]);
 
   useEffect(() => {
     const q = searchParams.get("q");
@@ -69,7 +74,7 @@ export default function AdminAppointments() {
   const submit = async () => {
     setBusy(true);
     setMsg(null);
-    const res = await createAppointment({ ...form, serviceId: form.serviceId || undefined });
+    const res = await createAppointment({ ...form, serviceId: form.serviceId || undefined }, scope || undefined);
     setBusy(false);
     if (!res.ok) {
       setMsg({ ok: false, text: res.error });
@@ -101,8 +106,21 @@ export default function AdminAppointments() {
           <h1 className="text-2xl font-black uppercase">Citas</h1>
           <p className="text-sm text-stone-500 dark:text-stone-400">Crea, modifica y gestiona reservas</p>
         </div>
-        <button onClick={() => { setShowNew(true); setMsg(null); }} className="btn-primary">＋ Nueva cita</button>
+        <button
+          onClick={() => { setShowNew(true); setMsg(null); }}
+          disabled={scope === "all"}
+          title={scope === "all" ? "Elige un barbero específico para crear una cita" : undefined}
+          className="btn-primary disabled:cursor-not-allowed disabled:opacity-40"
+        >
+          ＋ Nueva cita
+        </button>
       </div>
+
+      {scope === "all" && (
+        <p className="rounded-lg bg-amber-500/10 px-3 py-2 text-sm text-amber-600">
+          Estás viendo todos los barberos. Elige uno específico en el menú para crear una cita nueva.
+        </p>
+      )}
 
       {showNew && (
         <div className="card space-y-3">
@@ -178,7 +196,9 @@ export default function AdminAppointments() {
               </p>
             </div>
             <div className="min-w-[160px] flex-1">
-              <p className="font-bold">{a.clientName}</p>
+              <p className="font-bold">
+                {a.clientName} {a.barberName && scope === "all" && <span className="chip bg-brand-500/15 text-brand-600 dark:text-brand-400">{a.barberName}</span>}
+              </p>
               <p className="text-xs text-stone-500 dark:text-stone-400">{a.serviceName} · {a.durationMin} min · {a.code}</p>
             </div>
             <p className="font-black text-brand-600 dark:text-brand-400">{money(a.price)}</p>

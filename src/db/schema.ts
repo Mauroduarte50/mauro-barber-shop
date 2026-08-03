@@ -16,14 +16,26 @@ import {
  * to group multiple barbers under one shop without reworking the tables.
  */
 
-export const users = pgTable("users", {
-  id: uuid("id").primaryKey().defaultRandom(),
-  name: text("name").notNull(),
-  email: text("email").notNull().unique(),
-  passwordHash: text("password_hash").notNull(),
-  role: text("role").notNull().default("admin"),
-  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
-});
+export const USER_ROLES = ["admin", "barbero"] as const;
+export type UserRole = (typeof USER_ROLES)[number];
+
+export const users = pgTable(
+  "users",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    name: text("name").notNull(),
+    email: text("email").notNull().unique(),
+    passwordHash: text("password_hash").notNull(),
+    role: text("role").notNull().default("admin"),
+    // Which barber this login belongs to. Admins may or may not have one
+    // (set when the admin is also a working barber, e.g. today's sole
+    // account); barbero accounts always have exactly one, enforced in
+    // application code (not a DB constraint, to keep admin optional).
+    barberId: uuid("barber_id").references(() => barbers.id, { onDelete: "set null" }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [uniqueIndex("users_barber_idx").on(t.barberId)],
+);
 
 export const sessions = pgTable(
   "sessions",

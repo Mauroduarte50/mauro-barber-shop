@@ -3,7 +3,7 @@ import crypto from "node:crypto";
 import bcrypt from "bcryptjs";
 import { and, eq, gt } from "drizzle-orm";
 import { db } from "@/db";
-import { sessions, users, type User } from "@/db/schema";
+import { barbers, sessions, users, type User } from "@/db/schema";
 
 const COOKIE = "barber_session";
 const SESSION_DAYS = 7;
@@ -39,6 +39,18 @@ export async function destroySession(): Promise<void> {
   store.delete(COOKIE);
 }
 
+/**
+ * A deactivated barbero loses panel access — they "no longer work here."
+ * Admins keep access regardless of their own barberId's active flag:
+ * deactivating yourself as a working barber must not lock you out of
+ * managing the shop.
+ */
+export async function isAccountActive(user: User): Promise<boolean> {
+  if (user.role !== "barbero" || !user.barberId) return true;
+  const [barber] = await db.select({ active: barbers.active }).from(barbers).where(eq(barbers.id, user.barberId)).limit(1);
+  return !!barber?.active;
+}
+
 export async function getCurrentUser(): Promise<User | null> {
   const store = await cookies();
   const token = store.get(COOKIE)?.value;
@@ -50,5 +62,10 @@ export async function getCurrentUser(): Promise<User | null> {
     .where(and(eq(sessions.token, token), gt(sessions.expiresAt, new Date())))
     .limit(1);
   if (!rows.length) return null;
-  return rows[0].user;
+  const user = rows[0].user;
+
+  // Checked live on every call, not just at login — see isAccountActive.
+  if (!(await isAccountActive(user))) return null;
+
+  return user;
 }
