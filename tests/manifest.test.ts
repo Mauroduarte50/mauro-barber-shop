@@ -15,11 +15,31 @@ import { GET as adminManifestRoute } from "../src/app/admin-manifest.webmanifest
 // instead of a value baked in at build time.
 
 describe("PWA manifests: client vs admin install must not collide", () => {
-  it("the admin manifest route opens straight into /admin, scoped to /admin", async () => {
+  it("the admin manifest route opens straight into /admin", async () => {
     const res = await adminManifestRoute();
     const manifest = await res.json();
     expect(manifest.start_url).toBe("/admin");
-    expect(manifest.scope).toBe("/admin");
+    expect(manifest.id).toBe("/admin");
+  });
+
+  // Regression guard: scope used to be "/admin", which excludes /login.
+  // /login is reached from inside the installed admin app whenever the
+  // session cookie has expired (or via logout) — since it's outside
+  // "/admin", the standalone window was forced to break out into a regular
+  // browser tab/window to show it (spec-mandated for out-of-scope
+  // navigations), which surfaced as the installed icon "reusing an open
+  // Safari tab" instead of showing /login in the app. Scope must stay wide
+  // enough to cover /login; `id` (not `scope`) is what keeps this a
+  // distinct installed app from the client manifest.
+  it("the admin manifest scope covers /login so an expired session doesn't break out of the standalone app", async () => {
+    const res = await adminManifestRoute();
+    const manifest = await res.json();
+    expect("/login".startsWith(manifest.scope)).toBe(true);
+  });
+
+  it("the admin manifest is served with the manifest content type, not plain JSON", async () => {
+    const res = await adminManifestRoute();
+    expect(res.headers.get("Content-Type")).toBe("application/manifest+json");
   });
 
   it("the client manifest (app/manifest.ts) opens at / and is scoped to /", async () => {
