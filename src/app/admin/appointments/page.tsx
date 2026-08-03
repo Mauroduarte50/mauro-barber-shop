@@ -11,7 +11,7 @@ import {
   setAppointmentStatus,
 } from "@/lib/actions";
 import { APPOINTMENT_STATUSES, STATUS_LABELS } from "@/db/schema";
-import { isValidPhone, money, thankYouWhatsAppMessage, waLink } from "@/lib/utils";
+import { isValidPhone, money, reminderWhatsAppMessage, thankYouWhatsAppMessage, waLink } from "@/lib/utils";
 
 const STATUS_COLORS: Record<string, string> = {
   pendiente: "bg-amber-500/15 text-amber-600 dark:text-amber-400",
@@ -38,6 +38,7 @@ export default function AdminAppointments() {
   const [busy, setBusy] = useState(false);
   const [branding, setBranding] = useState({ barberName: "tu barbero", businessName: "la barbería" });
   const [thankYouFor, setThankYouFor] = useState<Row | null>(null);
+  const [reminderFor, setReminderFor] = useState<Row | null>(null);
 
   useEffect(() => {
     getBrandingInfo().then((b) => setBranding({ barberName: b.barberName, businessName: b.businessName }));
@@ -190,6 +191,11 @@ export default function AdminAppointments() {
                 <option key={s} value={s}>{STATUS_LABELS[s]}</option>
               ))}
             </select>
+            {a.status === "confirmada" && (
+              <button onClick={() => setReminderFor(a)} className="btn-ghost btn-sm" title="Enviar recordatorio por WhatsApp">
+                📲
+              </button>
+            )}
             {a.status === "atendida" && (
               <button onClick={() => setThankYouFor(a)} className="btn-ghost btn-sm" title="Enviar agradecimiento por WhatsApp">
                 💬
@@ -229,6 +235,44 @@ export default function AdminAppointments() {
               </p>
             )}
             <button onClick={() => setThankYouFor(null)} className="btn-ghost mt-2 w-full">
+              Ahora no
+            </button>
+          </div>
+        </div>
+      )}
+
+      {reminderFor && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4" role="dialog" aria-modal="true">
+          <div className="card w-full max-w-md bg-white dark:bg-stone-900">
+            <p className="text-3xl">⏰</p>
+            <h3 className="mt-1 font-black uppercase">Recordatorio de cita</h3>
+            <p className="mt-2 text-sm text-stone-500 dark:text-stone-400">
+              ¿Enviarle a <strong>{reminderFor.clientName}</strong> un recordatorio por WhatsApp de su cita de hoy?
+            </p>
+            {isValidPhone(reminderFor.clientPhone) ? (
+              <a
+                href={waLink(
+                  reminderFor.clientPhone,
+                  reminderWhatsAppMessage(
+                    reminderFor.clientName,
+                    branding.businessName,
+                    branding.barberName,
+                    new Date(reminderFor.startTime).toLocaleTimeString("es-CO", { hour: "2-digit", minute: "2-digit" }),
+                  ),
+                )}
+                target="_blank"
+                rel="noopener noreferrer"
+                onClick={() => setReminderFor(null)}
+                className="btn-primary mt-4 w-full"
+              >
+                📲 Enviar recordatorio por WhatsApp
+              </a>
+            ) : (
+              <p className="mt-4 rounded-lg bg-red-500/10 px-3 py-2 text-sm font-medium text-red-500">
+                Esta cita no tiene un número de teléfono válido, así que no se puede abrir WhatsApp.
+              </p>
+            )}
+            <button onClick={() => setReminderFor(null)} className="btn-ghost mt-2 w-full">
               Ahora no
             </button>
           </div>

@@ -114,6 +114,11 @@ export const appointments = pgTable(
     rescheduledFrom: timestamp("rescheduled_from", { withTimezone: true }),
     paymentMethod: text("payment_method"),
     paid: boolean("paid").notNull().default(false),
+    // Set once the 30-min-before push reminder has fired for this
+    // appointment's current startTime, so the reminder cron never double-sends.
+    // Reset to null whenever startTime changes (reschedule) so the new time
+    // gets its own reminder.
+    reminderSentAt: timestamp("reminder_sent_at", { withTimezone: true }),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
   },

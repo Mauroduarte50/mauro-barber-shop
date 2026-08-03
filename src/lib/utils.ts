@@ -122,6 +122,16 @@ export function thankYouWhatsAppMessage(clientName: string, businessName: string
   return `¡Hola ${clientName}! Muchas gracias por tu visita a ${businessName}. Espero que te haya encantado tu corte. ¡Te esperamos pronto! — ${barberName}`;
 }
 
+/** Pre-written WhatsApp reminder message sent to a client ~30 min before their appointment. */
+export function reminderWhatsAppMessage(
+  clientName: string,
+  businessName: string,
+  barberName: string,
+  timeLabel: string,
+): string {
+  return `¡Hola ${clientName}! Te recordamos que tienes una cita en ${businessName} hoy a las ${timeLabel} con ${barberName}. ¡Te esperamos!`;
+}
+
 export function buildICS(start: Date, end: Date, title: string, desc: string, location: string): string {
   const fmt = (d: Date) =>
     d.toISOString().replace(/[-:]/g, "").replace(/\.\d{3}/, "");

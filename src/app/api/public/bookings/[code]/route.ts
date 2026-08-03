@@ -129,7 +129,16 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ code: 
       }
       await tx
         .update(appointments)
-        .set({ startTime: newStart, endTime: newEnd, rescheduledFrom: oldStart, status: "confirmada", updatedAt: new Date() })
+        .set({
+          startTime: newStart,
+          endTime: newEnd,
+          rescheduledFrom: oldStart,
+          status: "confirmada",
+          updatedAt: new Date(),
+          // The reminder (if any) was for the OLD time — clear it so the
+          // new time gets its own, instead of never getting one.
+          reminderSentAt: null,
+        })
         .where(eq(appointments.id, a.id));
     });
   } catch (e) {
